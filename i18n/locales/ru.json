@@ -1,0 +1,177 @@
+{
+  "common": {
+    "views": "просмотров",
+    "years_ago": "{count} лет назад",
+    "months_ago": "{count} месяцев назад",
+    "days_ago": "{count} дней назад",
+    "hours_ago": "{count} часов назад",
+    "minutes_ago": "{count} минут назад",
+    "seconds_ago": "{count} секунд назад",
+    "just_now": "только что",
+    "failed": "Ошибка",
+    "success": "Успешно",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить"
+  },
+  "header": {
+    "search": "Поиск видео...",
+    "login": "Войти",
+    "logout": "Выйти",
+    "upload": "Загрузить",
+    "notifications": "Уведомления",
+    "user_menu": {
+      "title": "Меню пользователя",
+      "dashboard": "Панель управления",
+      "profile": "Мой профиль",
+      "settings": "Настройки",
+      "help": "Справка"
+    }
+  },
+  "sidebar": {
+    "home": "Главная",
+    "trending": "В тренде",
+    "explore": "Навигатор",
+    "library": "Библиотека",
+    "history": "История",
+    "your_videos": "Ваши видео",
+    "watch_later": "Смотреть позже",
+    "liked_videos": "Понравившиеся",
+    "see_all": "Смотреть всё",
+    "create_new": "Создать"
+  },
+  "home": {
+    "no_videos": "Видео не найдены",
+    "be_first": "Станьте первым, кто загрузит видео на Flow!",
+    "upload_now": "Загрузить сейчас",
+    "categories": {
+      "all": "Все видео",
+      "trending": "В тренде",
+      "recent": "Недавние",
+      "recommended": "Рекомендации"
+    }
+  },
+  "search": {
+    "results_for": "Результаты для \"{query}\"",
+    "search_results": "Результаты поиска",
+    "videos_found": "видео найдено",
+    "no_results": "Видео не найдены",
+    "try_different": "Попробуйте другие ключевые слова или зайдите позже.",
+    "browse_all": "Смотреть все видео"
+  },
+  "my_videos": {
+    "title": "Ваши видео",
+    "subtitle": "Управление загрузками и статусом контента",
+    "upload_new": "Загрузить новое",
+    "delete_confirm": "Вы уверены, что хотите удалить это видео? Это действие нельзя отменить.",
+    "no_videos": "Видео пока нет",
+    "start_sharing": "Начните делиться своими моментами с миром.",
+    "upload_first": "Загрузите свое первое видео",
+    "delete": "Удалить",
+    "view": "Смотреть"
+  },
+  "upload": {
+    "title": "Загрузка видео",
+    "subtitle": "Поделитесь своей историей с миром",
+    "video_title": "Название",
+    "video_title_placeholder": "Добавьте название, описывающее ваше видео",
+    "description": "Описание",
+    "description_placeholder": "Расскажите зрителям о своем видео",
+    "video_file": "Файл видео",
+    "thumbnail": "Обложка",
+    "choose_image": "Выбрать изображение",
+    "choose_video": "Выбрать видео",
+    "video_hint": "MP4, WebM или Ogg",
+    "submit": "Опубликовать",
+    "uploading": "Загрузка...",
+    "publish": "Опубликовать видео",
+    "success": "Видео успешно загружено!",
+    "error": "Ошибка при загрузке видео",
+    "preview_title": "Предпросмотр",
+    "no_description": "Описание отсутствует",
+    "guidelines_title": "Загрузка контента",
+    "creator_studio": "Студия создания",
+    "live_preview": "Живой просмотр",
+    "guide_1": "Используйте яркие названия для привлечения внимания.",
+    "guide_2": "Качественные обложки повышают интерес зрителей."
+  },
+  "login": {
+    "welcome": "С возвращением",
+    "create_account": "Создать аккаунт",
+    "login_to_continue": "Войдите, чтобы продолжить",
+    "join_platform": "Присоединяйтесь к современной видеоплатформе",
+    "title": "Вход в Flow",
+    "username": "Имя пользователя",
+    "username_or_email": "Имя пользователя или Email",
+    "email": "Email",
+    "password": "Пароль",
+    "placeholder_username": "Введите имя пользователя",
+    "placeholder_email": "Введите ваш email",
+    "submit_login": "Войти",
+    "submit_login_btn": "Войти",
+    "submit_signup": "Зарегистрироваться",
+    "processing": "Обработка...",
+    "no_account": "Нет аккаунта?",
+    "have_account": "Уже есть аккаунт?",
+    "create_one": "Создать",
+    "login_here": "Войти здесь",
+    "error_default": "Что-то пошло не так"
+  },
+  "admin": {
+    "dashboard": "Панель администратора",
+    "safety": "Управление контентом и безопасностью",
+    "stats": {
+      "total_videos": "Всего видео",
+      "restricted": "Ограничено"
+    },
+    "table": {
+      "video": "Видео",
+      "author": "Автор",
+      "date": "Дата загрузки",
+      "status": "Статус",
+      "views": "Просмотры",
+      "actions": "Действия"
+    },
+    "actions": {
+      "restrict": "Ограничить",
+      "unrestrict": "Разблокировать",
+      "delete": "Удалить"
+    },
+    "alerts": {
+      "update_failed": "Не удалось обновить статус",
+      "delete_confirm": "Вы уверены, что хотите удалить это видео?",
+      "delete_failed": "Не удалось удалить видео"
+    }
+  },
+  "watch": {
+    "subscribers": "подписчиков",
+    "subscribe": "Подписаться",
+    "subscribed": "Вы подписаны",
+    "share": "Поделиться",
+    "comments": "комментариев",
+    "comment": "Комментировать",
+    "sort_by": "Сортировка",
+    "add_comment": "Оставьте комментарий...",
+    "login_to_comment": "Чтобы оставить комментарий, {login}.",
+    "login_link": "войдите в аккаунт",
+    "reply": "Ответить",
+    "up_next": "Следующее видео"
+  },
+  "placeholders": {
+    "library_title": "Ваша библиотека",
+    "library_empty": "Войдите, чтобы увидеть свои плейлисты и историю.",
+    "section_empty": "В разделе «{section}» пока ничего нет."
+  },
+  "units": {
+    "million": "млн",
+    "thousand": "тыс"
+  },
+  "pages": {
+    "home": "Главная",
+    "watch": "Просмотр",
+    "upload": "Загрузка видео",
+    "admin": "Админ-панель",
+    "library": "Библиотека",
+    "login": "Вход",
+    "search": "Поиск"
+  }
+}
