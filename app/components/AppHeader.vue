@@ -458,6 +458,16 @@ const handleHeaderMove = (e) => {
   z-index: 2000;
 }
 
+.user-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -25px;
+  left: 0;
+  right: 0;
+  height: 25px;
+  background: transparent;
+}
+
 .user-profile:hover .user-dropdown {
   opacity: 1;
   transform: translateY(0) scale(1);

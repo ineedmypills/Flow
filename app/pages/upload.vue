@@ -16,11 +16,58 @@ const form = reactive({
   description: ''
 })
 
-const onVideoChange = (e) => {
+const generatedThumbs = ref([])
+const selectedGeneratedThumb = ref(null)
+
+const generateThumbnails = async (file) => {
+  generatedThumbs.value = []
+  selectedGeneratedThumb.value = null
+  
+  const video = document.createElement('video')
+  video.src = URL.createObjectURL(file)
+  
+  await new Promise(resolve => {
+    video.onloadedmetadata = () => {
+      resolve()
+    }
+  })
+
+  const times = [
+    video.duration * 0.1,
+    video.duration * 0.5,
+    video.duration * 0.9
+  ]
+
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+
+  for (const time of times) {
+    video.currentTime = time
+    await new Promise(resolve => {
+      video.onseeked = () => {
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        ctx.drawImage(video, 0, 0)
+        generatedThumbs.value.push(canvas.toDataURL('image/jpeg'))
+        resolve()
+      }
+    })
+  }
+  
+  // Auto-select first one if user hasn't uploaded one
+  if (generatedThumbs.value.length > 0 && !thumbFile.value) {
+    selectedGeneratedThumb.value = 0
+  }
+  
+  URL.revokeObjectURL(video.src)
+}
+
+const onVideoChange = async (e) => {
   const file = e.target.files[0]
   if (file) {
     videoFile.value = file
     videoPreview.value = URL.createObjectURL(file)
+    await generateThumbnails(file)
   }
 }
 
@@ -29,6 +76,7 @@ const onThumbChange = (e) => {
   if (file) {
     thumbFile.value = file
     thumbPreview.value = URL.createObjectURL(file)
+    selectedGeneratedThumb.value = null // Clear generated selection if manual upload
   }
 }
 
@@ -40,7 +88,15 @@ const handleUpload = async () => {
   formData.append('title', form.title)
   formData.append('description', form.description)
   formData.append('video', videoFile.value)
-  if (thumbFile.value) formData.append('thumbnail', thumbFile.value)
+  
+  if (thumbFile.value) {
+    formData.append('thumbnail', thumbFile.value)
+  } else if (selectedGeneratedThumb.value !== null) {
+    const dataUrl = generatedThumbs.value[selectedGeneratedThumb.value]
+    const response = await fetch(dataUrl)
+    const blob = await response.blob()
+    formData.append('thumbnail', blob, 'thumbnail.jpg')
+  }
 
   try {
     await $fetch('/api/videos/upload', {
@@ -55,33 +111,10 @@ const handleUpload = async () => {
   }
 }
 
-// 3D Tilt Logic for Preview
+// Remove 3D Tilt Logic
 const previewRef = ref(null)
-const handlePreviewMove = (e) => {
-  const card = previewRef.value
-  if (!card) return
-  const rect = card.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const y = e.clientY - rect.top
-  const centerX = rect.width / 2
-  const centerY = rect.height / 2
-  const rotateX = (y - centerY) / 20
-  const rotateY = (centerX - x) / 20
-  
-  card.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`
-  
-  // Dynamic glow position
-  const glowX = (x / rect.width) * 100
-  const glowY = (y / rect.height) * 100
-  card.style.setProperty('--glow-x', `${glowX}%`)
-  card.style.setProperty('--glow-y', `${glowY}%`)
-}
-
-const resetPreview = () => {
-  if (previewRef.value) {
-    previewRef.value.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)'
-  }
-}
+const handlePreviewMove = () => {}
+const resetPreview = () => {}
 </script>
 
 <template>
@@ -134,29 +167,44 @@ const resetPreview = () => {
             </div>
 
             <div class="file-selection-grid">
-              <!-- Thumbnail Picker -->
+              <!-- Thumbnail Selection -->
               <div class="picker-column">
                 <label class="premium-label">{{ t('upload.thumbnail') }}</label>
-                <div 
-                  class="drop-zone-premium" 
-                  :class="{ 'has-file': thumbPreview }"
-                  @click="$refs.thumbInput.click()"
-                >
-                  <div v-if="thumbPreview" class="preview-overlay">
-                    <img :src="thumbPreview" class="thumb-img" />
-                    <button class="remove-btn-premium" @click.stop="thumbPreview = null; thumbFile = null">
-                      <X :size="18" />
-                    </button>
-                  </div>
-                  <div v-else class="placeholder-content">
-                    <div class="icon-orb">
-                      <ImageIcon :size="28" />
+                
+                <div class="thumbnail-options-grid">
+                  <!-- Custom Upload Option -->
+                  <div 
+                    class="drop-zone-premium mini" 
+                    :class="{ 'has-file': thumbPreview }"
+                    @click="$refs.thumbInput.click()"
+                  >
+                    <div v-if="thumbPreview" class="preview-overlay">
+                      <img :src="thumbPreview" class="thumb-img" />
+                      <div class="selection-indicator">
+                        <CheckCircle2 :size="16" />
+                      </div>
                     </div>
-                    <span class="main-text">{{ t('upload.choose_image') }}</span>
-                    <span class="sub-text">JPG, PNG, WEBP</span>
+                    <div v-else class="placeholder-content">
+                      <Upload :size="20" />
+                      <span>{{ t('upload.upload') || 'Загрузить' }}</span>
+                    </div>
                   </div>
-                  <div class="drop-zone-glow"></div>
+
+                  <!-- Generated Options -->
+                  <div 
+                    v-for="(thumb, idx) in generatedThumbs" 
+                    :key="idx"
+                    class="generated-thumb-card"
+                    :class="{ active: selectedGeneratedThumb === idx && !thumbFile }"
+                    @click="selectedGeneratedThumb = idx; thumbFile = null; thumbPreview = null"
+                  >
+                    <img :src="thumb" />
+                    <div class="selection-indicator">
+                      <CheckCircle2 :size="16" />
+                    </div>
+                  </div>
                 </div>
+
                 <input ref="thumbInput" type="file" hidden accept="image/*" @change="onThumbChange" />
               </div>
 
@@ -265,6 +313,83 @@ const resetPreview = () => {
 </template>
 
 <style scoped>
+.thumbnail-options-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.drop-zone-premium.mini {
+  height: 100px;
+  border-radius: 16px;
+}
+
+.drop-zone-premium.mini .placeholder-content {
+  gap: 4px;
+}
+
+.drop-zone-premium.mini .placeholder-content span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.generated-thumb-card {
+  height: 100px;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  background: rgba(255,255,255,0.03);
+}
+
+.generated-thumb-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.generated-thumb-card:hover img {
+  opacity: 0.8;
+}
+
+.generated-thumb-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.generated-thumb-card.active img {
+  opacity: 1;
+}
+
+.selection-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--primary);
+  color: #081316;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.generated-thumb-card.active .selection-indicator,
+.drop-zone-premium.has-file .selection-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .upload-page {
   min-height: 100vh;
   padding: 60px 20px;
@@ -289,7 +414,7 @@ const resetPreview = () => {
 
 .blob-1 { width: 600px; height: 600px; background: var(--primary); top: -100px; left: -100px; }
 .blob-2 { width: 500px; height: 500px; background: var(--accent); bottom: -100px; right: -100px; animation-delay: -5s; }
-.blob-3 { width: 400px; height: 400px; background: #8b5cf6; top: 30%; right: 10%; animation-delay: -10s; }
+.blob-3 { width: 400px; height: 400px; background: #00e5ff; top: 30%; right: 10%; animation-delay: -10s; }
 
 @keyframes blob-float {
   0% { transform: translate(0, 0) scale(1); }
@@ -591,10 +716,10 @@ const resetPreview = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(244, 63, 94, 0.1);
+  background: rgba(0, 255, 209, 0.1);
   padding: 4px 10px;
   border-radius: 100px;
-  color: var(--accent);
+  color: var(--primary);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -621,15 +746,17 @@ const resetPreview = () => {
   border-radius: 32px;
   overflow: hidden;
   box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
-  transition: transform 0.1s ease-out;
-  will-change: transform;
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.preview-card-premium:hover {
+  transform: translateY(-8px);
 }
 
 .preview-video-wrapper {
   position: relative;
   aspect-ratio: 16/9;
   background: #000;
-  transform: translateZ(30px);
 }
 
 .preview-video {
@@ -655,7 +782,6 @@ const resetPreview = () => {
 
 .preview-details {
   padding: 24px;
-  transform: translateZ(20px);
 }
 
 .preview-title {

@@ -20,11 +20,11 @@ CREATE TABLE `interactions` (
 --> statement-breakpoint
 CREATE TABLE `subscriptions` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`follower_id` integer NOT NULL,
-	`following_id` integer NOT NULL,
+	`subscriber_id` integer NOT NULL,
+	`author_id` integer NOT NULL,
 	`created_at` integer DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	FOREIGN KEY (`follower_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`following_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`subscriber_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`author_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `users` (

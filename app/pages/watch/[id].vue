@@ -1,5 +1,5 @@
 <script setup>
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Users, MessageSquare, Play, Volume2, Maximize, Settings, Heart, Sparkles } from 'lucide-vue-next'
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Send, Users, MessageSquare, Play, Pause, Volume1, Volume2, VolumeX, Maximize, Settings, Heart, Sparkles } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -17,8 +17,12 @@ const { data: recommendations } = await useFetch('/api/videos', {
 
 const newComment = ref('')
 const submittingComment = ref(false)
-const isSubscribed = ref(false)
-const isLiked = ref(false)
+const isSubscribed = ref(video.value?.isSubscribed || false)
+const isLiked = ref(video.value?.userInteraction === 'LIKE')
+const isDisliked = ref(video.value?.userInteraction === 'DISLIKE')
+const subscriberCount = ref(video.value?.subscriberCount || 0)
+const likesCount = ref(video.value?.likesCount || 0)
+const dislikesCount = ref(video.value?.dislikesCount || 0)
 
 const { formatViews, timeAgo } = useFormat()
 
@@ -37,30 +41,198 @@ const addComment = async () => {
   }
 }
 
+const toggleSubscribe = async () => {
+  if (!loggedIn.value) return navigateTo('/login')
+  const prev = isSubscribed.value
+  isSubscribed.value = !isSubscribed.value
+  subscriberCount.value += isSubscribed.value ? 1 : -1
+  
+  try {
+    await $fetch('/api/users/subscribe', {
+      method: 'POST',
+      body: { authorId: video.value.authorId }
+    })
+  } catch (e) {
+    isSubscribed.value = prev
+    subscriberCount.value += isSubscribed.value ? 1 : -1
+  }
+}
+
 const handleInteraction = async (type) => {
   if (!loggedIn.value) return navigateTo('/login')
-  if (type === 'LIKE') isLiked.value = !isLiked.value
-  await $fetch(`/api/videos/${route.params.id}/interaction`, {
-    method: 'POST',
-    body: { type }
-  })
+  
+  const prevLiked = isLiked.value
+  const prevDisliked = isDisliked.value
+  const prevLikesCount = likesCount.value
+  
+  if (type === 'LIKE') {
+    if (isLiked.value) {
+      isLiked.value = false
+      likesCount.value--
+    } else {
+      isLiked.value = true
+      likesCount.value++
+      if (isDisliked.value) {
+        isDisliked.value = false
+        dislikesCount.value--
+      }
+    }
+  } else if (type === 'DISLIKE') {
+    if (isDisliked.value) {
+      isDisliked.value = false
+      dislikesCount.value--
+    } else {
+      isDisliked.value = true
+      dislikesCount.value++
+      if (isLiked.value) {
+        isLiked.value = false
+        likesCount.value--
+      }
+    }
+  }
+
+  try {
+    await $fetch(`/api/videos/${route.params.id}/interaction`, {
+      method: 'POST',
+      body: { type }
+    })
+  } catch (e) {
+    // Revert on error
+    isLiked.value = prevLiked
+    isDisliked.value = prevDisliked
+    likesCount.value = prevLikesCount
+  }
 }
 
 // 3D Tilt for Player & Elements
 const playerRef = ref(null)
-const handlePlayerMove = (e) => {
-  const player = playerRef.value
-  if (!player) return
-  const rect = player.getBoundingClientRect()
+const videoRef = ref(null)
+const isPlaying = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
+const volume = ref(1)
+const isMuted = ref(false)
+const isFullscreen = ref(false)
+
+const togglePlay = () => {
+  if (!videoRef.value) return
+  if (isPlaying.value) {
+    videoRef.value.pause()
+  } else {
+    videoRef.value.play()
+  }
+}
+
+const handleTimeUpdate = () => {
+  if (!videoRef.value) return
+  currentTime.value = videoRef.value.currentTime
+  // Ensure duration is always up to date
+  if ((!duration.value || isNaN(duration.value)) && videoRef.value.duration) {
+    duration.value = videoRef.value.duration
+  }
+}
+
+const handleLoadedMetadata = () => {
+  if (!videoRef.value) return
+  if (videoRef.value.duration && !isNaN(videoRef.value.duration)) {
+    duration.value = videoRef.value.duration
+  }
+}
+
+// Fallback to ensure duration is captured
+watch(() => videoRef.value?.duration, (newDuration) => {
+  if (newDuration && !isNaN(newDuration)) {
+    duration.value = newDuration
+  }
+})
+
+const handleSeek = (e) => {
+  if (!videoRef.value || !duration.value) return
+  const rect = e.currentTarget.getBoundingClientRect()
   const x = e.clientX - rect.left
-  const y = e.clientY - rect.top
-  const rotateX = (y - rect.height / 2) / 100
-  const rotateY = (rect.width / 2 - x) / 100
-  player.style.transform = `perspective(2000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.01)`
+  const percentage = x / rect.width
+  videoRef.value.currentTime = percentage * duration.value
 }
-const resetPlayerTilt = () => {
-  if (playerRef.value) playerRef.value.style.transform = 'perspective(2000px) rotateX(0) rotateY(0) scale(1)'
+
+const toggleMute = () => {
+  if (!videoRef.value) return
+  isMuted.value = !isMuted.value
+  videoRef.value.muted = isMuted.value
 }
+
+const toggleFullscreen = () => {
+  if (!playerRef.value) return
+  if (!document.fullscreenElement) {
+    playerRef.value.requestFullscreen()
+    isFullscreen.value = true
+  } else {
+    document.exitFullscreen()
+    isFullscreen.value = false
+  }
+}
+
+const formatTime = (seconds) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  return [h > 0 ? h : null, m, s]
+    .filter(x => x !== null)
+    .map(x => x.toString().padStart(2, '0'))
+    .join(':')
+}
+
+// Controls Visibility
+const showControls = ref(true)
+let controlsTimeout = null
+
+const resetControlsTimeout = () => {
+  showControls.value = true
+  clearTimeout(controlsTimeout)
+  if (isPlaying.value) {
+    controlsTimeout = setTimeout(() => {
+      showControls.value = false
+    }, 3000)
+  }
+}
+
+watch(isPlaying, (val) => {
+  if (val) resetControlsTimeout()
+  else showControls.value = true
+})
+
+// Keyboard Shortcuts
+const handleKeydown = (e) => {
+  // Don't trigger if typing in a textarea/input
+  if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return
+
+  switch (e.key.toLowerCase()) {
+    case ' ':
+    case 'k':
+      e.preventDefault()
+      togglePlay()
+      break
+    case 'f':
+      toggleFullscreen()
+      break
+    case 'm':
+      toggleMute()
+      break
+    case 'arrowleft':
+      videoRef.value.currentTime = Math.max(0, videoRef.value.currentTime - 5)
+      break
+    case 'arrowright':
+      videoRef.value.currentTime = Math.min(duration.value, videoRef.value.currentTime + 5)
+      break
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
@@ -73,39 +245,73 @@ const resetPlayerTilt = () => {
         <!-- Immersive Video Player Container -->
         <div 
           ref="playerRef"
-          class="player-wrapper glass-premium"
-          @mousemove="handlePlayerMove"
-          @mouseleave="resetPlayerTilt"
+          class="player-wrapper"
+          :class="{ 'hide-cursor': !showControls && isPlaying }"
+          @mousemove="resetControlsTimeout"
+          @mouseleave="showControls = false"
         >
           <div class="player-inner">
-            <video :src="video.url" autoplay class="video-element"></video>
+            <video 
+              ref="videoRef"
+              :src="video.url" 
+              autoplay 
+              class="video-element"
+              @timeupdate="handleTimeUpdate"
+              @loadedmetadata="handleLoadedMetadata"
+              @play="isPlaying = true"
+              @pause="isPlaying = false"
+              @click="togglePlay"
+              @dblclick="toggleFullscreen"
+            ></video>
             
-            <div class="player-overlay">
+            <div class="player-overlay" :class="{ visible: !isPlaying || showControls }" @click.self="togglePlay">
               <div class="overlay-top">
-                <div class="video-badge glass">{{ video.quality || '4K ULTRA HD' }}</div>
+                <div class="video-badge glass" v-if="video.quality">{{ video.quality }}</div>
               </div>
               
-              <div class="overlay-center">
-                <button class="center-play-btn">
+              <div class="overlay-center" v-if="!isPlaying">
+                <button class="center-play-btn" @click="togglePlay">
                   <Play :size="48" fill="currentColor" />
                 </button>
               </div>
 
               <div class="overlay-bottom glass">
-                <div class="progress-bar">
-                  <div class="progress-bg"></div>
-                  <div class="progress-fill" style="width: 35%"></div>
-                  <div class="progress-handle"></div>
+                <div class="progress-container" @click="handleSeek">
+                  <div class="progress-bar-hitbox"></div>
+                  <div class="progress-bar-main">
+                    <div class="progress-bg"></div>
+                    <div class="progress-fill" :style="{ width: (duration > 0 ? (currentTime / duration) * 100 : 0) + '%' }"></div>
+                    <div class="progress-handle" :style="{ left: (duration > 0 ? (currentTime / duration) * 100 : 0) + '%' }"></div>
+                  </div>
                 </div>
                 <div class="controls-row">
                   <div class="controls-left">
-                    <button class="control-btn"><Play :size="20" fill="currentColor" /></button>
-                    <button class="control-btn"><Volume2 :size="20" /></button>
-                    <span class="time-display">04:20 / 12:34</span>
+                    <button class="control-btn" @click="togglePlay">
+                      <component :is="isPlaying ? 'Pause' : 'Play'" :size="20" fill="currentColor" />
+                    </button>
+                    <div class="volume-container">
+                      <button class="control-btn" @click="toggleMute">
+                        <component :is="isMuted || volume === 0 ? 'VolumeX' : (volume < 0.5 ? 'Volume1' : 'Volume2')" :size="20" />
+                      </button>
+                      <div class="volume-slider-wrapper">
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="1" 
+                          step="0.01" 
+                          v-model="volume"
+                          @input="e => { videoRef.muted = false; isMuted = false; videoRef.volume = e.target.value }"
+                          class="volume-slider"
+                        />
+                      </div>
+                    </div>
+                    <span class="time-display">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
                   </div>
                   <div class="controls-right">
                     <button class="control-btn"><Settings :size="20" /></button>
-                    <button class="control-btn"><Maximize :size="20" /></button>
+                    <button class="control-btn" @click="toggleFullscreen">
+                      <Maximize :size="20" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -123,7 +329,7 @@ const resetPlayerTilt = () => {
                 {{ formatViews(video.views) }} {{ t('common.views') }}
               </span>
               <span class="stat-divider"></span>
-              <span class="stat-item">{{ new Date(video.createdAt).toLocaleDateString() }}</span>
+              <span class="stat-item">{{ timeAgo(video.createdAt) }}</span>
             </div>
           </div>
 
@@ -137,12 +343,12 @@ const resetPlayerTilt = () => {
               </div>
               <div class="author-meta">
                 <span class="author-name">{{ video.author }}</span>
-                <span class="subscriber-count">1.2M {{ t('watch.subscribers') }}</span>
+                <span class="subscriber-count">{{ formatViews(subscriberCount) }} {{ t('watch.subscribers') }}</span>
               </div>
               <button 
                 class="subscribe-btn" 
                 :class="{ subscribed: isSubscribed }"
-                @click="isSubscribed = !isSubscribed"
+                @click="toggleSubscribe"
               >
                 {{ isSubscribed ? t('watch.subscribed') || 'Subscribed' : t('watch.subscribe') }}
               </button>
@@ -156,7 +362,7 @@ const resetPlayerTilt = () => {
                   @click="handleInteraction('LIKE')"
                 >
                   <ThumbsUp :size="18" :fill="isLiked ? 'currentColor' : 'none'" />
-                  <span>42K</span>
+                  <span>{{ formatViews(likesCount) }}</span>
                 </button>
                 <div class="pill-divider"></div>
                 <button class="pill-btn dislike" @click="handleInteraction('DISLIKE')">
@@ -177,9 +383,9 @@ const resetPlayerTilt = () => {
 
           <div class="description-section glass-premium" :class="{ expanded: true }">
             <p class="description-text">{{ video.description }}</p>
-            <div class="tag-cloud">
-              <span v-for="tag in ['#motion', '#content', '#flow']" :key="tag" class="tag">
-                {{ tag }}
+            <div class="tag-cloud" v-if="video.tags?.length">
+              <span v-for="tag in video.tags" :key="tag" class="tag">
+                #{{ tag }}
               </span>
             </div>
           </div>
@@ -263,7 +469,6 @@ const resetPlayerTilt = () => {
           >
             <div class="rec-thumb-box">
               <img :src="rec.thumbnailUrl || '/placeholder-thumb.jpg'" :alt="rec.title" />
-              <div class="rec-duration">12:34</div>
               <div class="rec-hover-overlay">
                 <Play :size="20" fill="currentColor" />
               </div>
@@ -275,7 +480,7 @@ const resetPlayerTilt = () => {
                 <div class="rec-stats">
                   <span>{{ formatViews(rec.views) }}</span>
                   <span class="dot"></span>
-                  <span>3d ago</span>
+                  <span>{{ timeAgo(rec.createdAt) }}</span>
                 </div>
               </div>
             </div>
@@ -328,13 +533,16 @@ const resetPlayerTilt = () => {
 
 .player-wrapper {
   position: relative;
-  border-radius: 40px;
+  border-radius: 16px;
   overflow: hidden;
   background: #000;
-  box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
   margin-bottom: 40px;
-  transition: transform 0.1s ease-out;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.player-wrapper.hide-cursor {
+  cursor: none;
 }
 
 .player-inner {
@@ -357,7 +565,8 @@ const resetPlayerTilt = () => {
   background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.5) 100%);
 }
 
-.player-wrapper:hover .player-overlay {
+.player-wrapper:hover .player-overlay,
+.player-overlay.visible {
   opacity: 1;
 }
 
@@ -404,21 +613,46 @@ const resetPlayerTilt = () => {
 
 .overlay-bottom {
   position: absolute;
-  bottom: 24px;
-  left: 24px;
-  right: 24px;
-  padding: 20px;
-  border-radius: 24px;
-  background: rgba(10, 10, 15, 0.6);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 40px 30px 40px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
 }
 
-.progress-bar {
-  position: relative;
-  height: 6px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
-  margin-bottom: 20px;
+.progress-container {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
   cursor: pointer;
+  z-index: 10;
+}
+
+.progress-bar-hitbox {
+  position: absolute;
+  top: -15px;
+  left: 0;
+  right: 0;
+  bottom: -15px;
+}
+
+.progress-bar-main {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.player-wrapper:hover .progress-bar-main {
+  height: 6px;
+}
+
+.progress-bg {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
 }
 
 .progress-fill {
@@ -426,9 +660,65 @@ const resetPlayerTilt = () => {
   top: 0;
   left: 0;
   height: 100%;
+  background: linear-gradient(90deg, var(--primary), #00ffea);
+  box-shadow: 
+    0 0 15px var(--primary-glow),
+    0 0 30px rgba(0, 255, 234, 0.4);
+  transition: width 0.1s linear;
+}
+
+.progress-handle {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
   background: var(--primary);
-  border-radius: 3px;
-  box-shadow: 0 0 15px var(--primary-glow);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.1s ease;
+  pointer-events: none;
+}
+
+.player-wrapper:hover .progress-handle {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Volume Slider Styles */
+.volume-container {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.volume-slider-wrapper {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.2s ease, padding 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.volume-container:hover .volume-slider-wrapper {
+  width: 80px;
+  padding: 0 10px;
+}
+
+.volume-slider {
+  width: 60px;
+  height: 3px;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,0.2);
+  outline: none;
+  border-radius: 2px;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  cursor: pointer;
 }
 
 /* Controls Row */

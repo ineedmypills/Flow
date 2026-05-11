@@ -7,7 +7,7 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 export const useDb = () => {
   if (!_db) {
-    const sqlite = new Database('flow.db')
+    const sqlite = new Database('flow_v3.db')
     _db = drizzle(sqlite, { schema })
   }
   return _db

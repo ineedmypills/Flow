@@ -11,38 +11,8 @@ const props = defineProps({
 const { t } = useI18n()
 const { formatViews, timeAgo } = useFormat()
 
-// 3D Tilt Logic
-const cardRef = ref(null)
-const mouseX = ref(50)
-const mouseY = ref(50)
-
-const handleMouseMove = (e) => {
-  const card = cardRef.value?.$el || cardRef.value
-  if (!card) return
-  
-  const rect = card.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const y = e.clientY - rect.top
-  
-  mouseX.value = (x / rect.width) * 100
-  mouseY.value = (y / rect.height) * 100
-  
-  const centerX = rect.width / 2
-  const centerY = rect.height / 2
-  
-  const rotateX = (y - centerY) / 20
-  const rotateY = (centerX - x) / 20
-  
-  card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px)`
-}
-
-const resetTilt = () => {
-  const card = cardRef.value?.$el || cardRef.value
-  if (!card) return
-  card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0)`
-  mouseX.value = 50
-  mouseY.value = 50
-}
+const handleMouseMove = () => {}
+const resetTilt = () => {}
 </script>
 
 <template>
@@ -64,7 +34,7 @@ const resetTilt = () => {
       </div>
       
       <div class="thumbnail-shine"></div>
-      <div class="duration-tag glass">{{ video.duration || '12:34' }}</div>
+      <div class="duration-tag glass" v-if="video.duration">{{ video.duration }}</div>
     </div>
     
     <div class="content-wrapper">
@@ -107,12 +77,12 @@ const resetTilt = () => {
   border-radius: 32px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-  transform-style: preserve-3d;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   will-change: transform;
 }
 
 .video-card:hover {
+  transform: translateY(-8px);
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 
@@ -127,7 +97,6 @@ const resetTilt = () => {
   border-radius: 20px;
   overflow: hidden;
   background: #0a0a0c;
-  transform: translateZ(30px);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -217,7 +186,6 @@ const resetTilt = () => {
 .content-wrapper {
   display: flex;
   gap: 16px;
-  transform: translateZ(20px);
 }
 
 .author-avatar-wrapper {

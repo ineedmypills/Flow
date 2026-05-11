@@ -11,7 +11,22 @@ export const useFormat = () => {
 
   const timeAgo = (date) => {
     if (!date) return ''
-    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000)
+    let dateObj: Date
+    
+    if (typeof date === 'number') {
+      dateObj = new Date(date)
+    } else if (typeof date === 'string') {
+      let dateStr = date
+      if (!date.includes('Z') && !date.includes('+')) {
+        dateStr = date.replace(' ', 'T') + 'Z'
+      }
+      dateObj = new Date(dateStr)
+    } else {
+      dateObj = new Date(date)
+    }
+
+    if (isNaN(dateObj.getTime())) return date
+    const seconds = Math.floor((new Date().getTime() - dateObj.getTime()) / 1000)
     let interval = seconds / 31536000
     if (interval > 1) return t('common.years_ago', { count: Math.floor(interval) })
     interval = seconds / 2592000
