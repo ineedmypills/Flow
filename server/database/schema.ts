@@ -39,6 +39,13 @@ export const interactions = sqliteTable('interactions', {
   createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 })
 
+export const subscriptions = sqliteTable('subscriptions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  subscriberId: integer('subscriber_id').references(() => users.id).notNull(),
+  authorId: integer('author_id').references(() => users.id).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+})
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   videos: many(videos),
@@ -74,5 +81,18 @@ export const interactionsRelations = relations(interactions, ({ one }) => ({
   video: one(videos, {
     fields: [interactions.videoId],
     references: [videos.id],
+  }),
+}))
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  subscriber: one(users, {
+    fields: [subscriptions.subscriberId],
+    references: [users.id],
+    relationName: 'subscriber'
+  }),
+  author: one(users, {
+    fields: [subscriptions.authorId],
+    references: [users.id],
+    relationName: 'author'
   }),
 }))

@@ -41,6 +41,15 @@ export default defineEventHandler(async (event) => {
   }
 
   const db = useDb()
+  
+  // Verify user still exists in DB (since we might have cleared it)
+  const dbUser = await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.id, user.id)
+  })
+  if (!dbUser) {
+    await clearUserSession(event)
+    throw createError({ statusCode: 401, message: 'User not found, please re-login' })
+  }
   const [video] = await db.insert(schema.videos).values({
     title,
     description,
