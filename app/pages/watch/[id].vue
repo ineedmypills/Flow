@@ -6,6 +6,50 @@ const route = useRoute()
 const { user, loggedIn } = useUserSession()
 const { data: video } = await useFetch(`/api/videos/${route.params.id}`)
 
+// Share functionality
+const showShareMenu = ref(false)
+const shareContainerRef = ref(null)
+const embedInputRef = ref(null)
+const isCopied = ref(false)
+
+const embedCode = computed(() => {
+  const host = typeof window !== 'undefined' ? window.location.origin : ''
+  return `<iframe src="${host}/embed/${route.params.id}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`
+})
+
+const toggleShareMenu = () => {
+  showShareMenu.value = !showShareMenu.value
+  isCopied.value = false
+}
+
+const copyEmbedCode = async () => {
+  try {
+    await navigator.clipboard.writeText(embedCode.value)
+    isCopied.value = true
+    setTimeout(() => {
+      isCopied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy', err)
+  }
+}
+
+const selectAllCode = () => {
+  if (embedInputRef.value) {
+    embedInputRef.value.select()
+  }
+}
+
+// Close share menu when clicking outside
+onMounted(() => {
+  document.addEventListener('click', (e) => {
+    if (shareContainerRef.value && !shareContainerRef.value.contains(e.target)) {
+      showShareMenu.value = false
+    }
+  })
+})
+
+
 useHead({
   title: computed(() => video.value ? `${video.value.title} - Flow` : t('pages.watch'))
 })
@@ -370,10 +414,27 @@ onUnmounted(() => {
                 </button>
               </div>
               
-              <button class="action-pill glass">
-                <Share2 :size="18" />
-                <span>{{ t('watch.share') }}</span>
-              </button>
+              <div class="share-container" ref="shareContainerRef">
+                <button class="action-pill glass" @click="toggleShareMenu">
+                  <Share2 :size="18" />
+                  <span>{{ t('watch.share') }}</span>
+                </button>
+
+                <div class="share-menu glass-premium" v-if="showShareMenu">
+                  <div class="share-menu-header">
+                    <h4>{{ t('watch.share') }}</h4>
+                  </div>
+                  <div class="share-menu-body">
+                    <p class="share-label">{{ t('watch.embed_code') }}</p>
+                    <div class="embed-code-wrapper">
+                      <input type="text" readonly :value="embedCode" class="embed-input" ref="embedInputRef" @click="selectAllCode" />
+                      <button class="copy-btn" @click="copyEmbedCode" :class="{ copied: isCopied }">
+                        {{ isCopied ? t('watch.copied') : t('watch.copy') }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               
               <button class="action-pill glass icon-only">
                 <MoreHorizontal :size="18" />
@@ -934,6 +995,87 @@ onUnmounted(() => {
 
 .tag:hover {
   text-decoration: underline;
+}
+
+/* Share Menu */
+.share-container {
+  position: relative;
+}
+
+.share-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  background: #111115;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.08);
+  z-index: 100;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.share-menu-header {
+  margin-bottom: 16px;
+}
+
+.share-menu-header h4 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.share-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.embed-code-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.embed-input {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #fff;
+  font-family: monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.embed-input:focus {
+  border-color: var(--primary);
+}
+
+.copy-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  filter: brightness(1.1);
+}
+
+.copy-btn.copied {
+  background: var(--success);
 }
 
 /* Comments Section */
