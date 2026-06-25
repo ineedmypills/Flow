@@ -15,7 +15,6 @@
       <video
         ref="videoRef"
         :src="video.url"
-        autoplay
         class="video-element"
         @timeupdate="handleTimeUpdate"
         @loadedmetadata="handleLoadedMetadata"
@@ -103,7 +102,7 @@ const { data: video } = await useFetch(`/api/videos/${route.params.id}`)
 
 const videoRef = ref(null)
 const playerRef = ref(null)
-const isPlaying = ref(true)
+const isPlaying = ref(false)
 const isMuted = ref(false)
 const volume = ref(1)
 const currentTime = ref(0)
@@ -305,6 +304,10 @@ onMounted(() => {
 }
 
 .video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   padding: 20px 24px;
   background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0));
   display: flex;
